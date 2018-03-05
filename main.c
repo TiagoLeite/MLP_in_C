@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
-//#define activ(x) (1.0/(1.0 + exp(x)))
-#define activ(x) (1.0/((1.0+exp(-1.0*(x)))))
-#define deriv_activ(x) (activ(x)*(1.0-activ(x)))
+//#define activ(x) (1.0/((1.0+exp(-1.0*(x)))))
+//#define deriv_activ(x) (activ(x)*(1-activ(x)))
+#define activ(x) (tanh(x))
+#define deriv_activ(x) (pow((2.0/(exp(x)+exp(-1.0*(x)))), 2))
+
 
 struct mlp
 {
@@ -29,7 +31,7 @@ void backward(MLP *mlp, double *input, double *output);
 int main(void)
 {
     srand(time(NULL));
-    int vet[] = {2, 2};
+    int vet[] = {2, 1};
     printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 2);
 
@@ -38,10 +40,10 @@ int main(void)
     double vetor3[] = {0, 1};
     double vetor4[] = {1, 1};
 
-    double out1[] = {0, 1};
-    double out2[] = {1, 0};
+    double out1[] = {0};
+    double out2[] = {1};
 
-    for (int j = 0; j < 1000000; ++j)
+    for (int j = 0; j < 30000; ++j)
     {
         forward(mlp, vetor1);
         backward(mlp, vetor1, out1);
@@ -309,6 +311,7 @@ void free_mlp(MLP mlp)
 void fill_rand(double vet[], int size)
 {
     for (int i = 0; i < size; ++i)
-        vet[i] = 0.001*((rand()/(double)(RAND_MAX))*2.0-1.0);
+        vet[i] = 0.01*((rand()/(double)(RAND_MAX))*2.0-1.0);
+    //vet[size-1] = 0.005;
 }
 

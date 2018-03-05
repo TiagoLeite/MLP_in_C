@@ -29,41 +29,39 @@ void backward(MLP *mlp, double *input, double *output);
 int main(void)
 {
     srand(time(NULL));
-    int vet[] = {2, 2};
+    int vet[] = {2, 1};
     printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 2);
 
-    double vetor1[] = {.05, .1};
-    /*double vetor2[] = {1, 0};
+    double vetor1[] = {0, 0};
+    double vetor2[] = {1, 0};
     double vetor3[] = {0, 1};
-    double vetor4[] = {1, 1};*/
+    double vetor4[] = {1, 1};
 
-    double out1[] = {0.01, 0.99};
-    /*double out2[] = {0, 1};
-    double out3[] = {0, 1};
-    double out4[] = {1, 0};*/
+    double out1[] = {0};
+    double out2[] = {1};
 
-    /*for (int j = 0; j < 10000; ++j)
+    for (int j = 0; j < 100000; ++j)
     {
         forward(mlp, vetor1);
         backward(mlp, vetor1, out1);
-        if (j%100 == 0)
-            printf("Error: %f\n", mlp->error);
         forward(mlp, vetor2);
         backward(mlp, vetor2, out2);
         forward(mlp, vetor3);
-        backward(mlp, vetor3, out3);
+        backward(mlp, vetor3, out2);
         forward(mlp, vetor4);
-        backward(mlp, vetor4, out4);
-    }*/
+        backward(mlp, vetor4, out1);
+        if (j%100 == 0)
+            printf("Error: %f\n", mlp->error);
+    }
 
-    forward(mlp, vetor1);
+    /*forward(mlp, vetor1);
     double *final_outs = mlp->y_outs[mlp->n_layers-1];
     double *zs = mlp->z_outs[mlp->n_layers-1];
-    /*for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
+    for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
        printf("\n[zs: %f out: %f]", zs[i], final_outs[i]);
-    }*/
-    backward(mlp, vetor1, out1);
+    }
+    backward(mlp, vetor1, out1);*/
 
     /*printf("\nError: %f", mlp->error);
 
@@ -81,12 +79,15 @@ int main(void)
         printf("\n[zs: %f out: %f]", zs[i], final_outs[i]);
     }*/
 
-    for (int i = 0; i < 10000; ++i) {
+    /*for (int i = 0; i < 10000; ++i) {
         forward(mlp, vetor1);
         backward(mlp, vetor1, out1);
         if (!(i%100))
             printf("\nError: %f", mlp->error);
-    }
+    }*/
+
+    double *final_outs = mlp->y_outs[mlp->n_layers-1];
+    double *zs = mlp->z_outs[mlp->n_layers-1];
 
     printf("\n");
     forward(mlp, vetor1);
@@ -94,6 +95,29 @@ int main(void)
     for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
         printf("%f\n", final_outs[i]);
     }
+
+    printf("\n");
+    forward(mlp, vetor2);
+    final_outs = mlp->y_outs[mlp->n_layers-1];
+    for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
+        printf("%f\n", final_outs[i]);
+    }
+
+    printf("\n");
+    forward(mlp, vetor3);
+    final_outs = mlp->y_outs[mlp->n_layers-1];
+    for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
+        printf("%f\n", final_outs[i]);
+    }
+
+    printf("\n");
+    forward(mlp, vetor4);
+    final_outs = mlp->y_outs[mlp->n_layers-1];
+    for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
+        printf("%f\n", final_outs[i]);
+    }
+    backward(mlp, vetor4, out1);
+    printf("Err: %f", mlp->error);
 
     /*printf("\n");
     forward(mlp, vetor1);
@@ -128,7 +152,8 @@ void backward(MLP *mlp, double *input, double *output)
     for (int i = 0; i < mlp->n_neurons[n_last_layer]; ++i)//updating each weight of the layer
     {
         //printf("\ne: %f o: %f", mlp->y_outs[n_last_layer][i], output[i]);
-        error += pow(mlp->y_outs[n_last_layer][i] - output[i], 2);
+        //printf("\n%f %f", mlp->y_outs[n_last_layer][i],  output[i]);
+        error += (mlp->y_outs[n_last_layer][i] - output[i])*(mlp->y_outs[n_last_layer][i] - output[i]);
         mlp->deltas[n_last_layer][i] = (mlp->y_outs[n_last_layer][i] - output[i])*
                                       deriv_activ(mlp->z_outs[n_last_layer][i]);
         for (int j = 0; j < mlp->n_neurons[n_last_layer-1]; ++j)
@@ -207,14 +232,14 @@ double mult(const double *x, const double *w, int size)
         //printf(" x : %f w : %f ", x[i], w[i]);
         res += x[i]*w[i];
     }
-    //printf("bias: %f", w[size]);
+    //printf("bias: %f\n", w[size]);
     return res + w[size]; // w[size] = bias
 }
 
 MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
 
     MLP *mlp = (MLP*)malloc(sizeof(MLP));
-    mlp->LEARNING_RATE = 0.5;
+    mlp->LEARNING_RATE = 0.05;
 
     double ***network = (double ***) malloc(n_layers * sizeof(double ***));
     double **z_outs = (double **) malloc(n_layers * sizeof(double *));
@@ -235,18 +260,18 @@ MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
             for (int j = 0; j < n_neurons[0]; ++j)
             {
                 network[0][j] = (double*)malloc((input_size+1) * sizeof(double));//+1 because of bias
-                fill_rand(network[0][j], input_size);
+                fill_rand(network[0][j], input_size+1);
             }
         else
         {
             for (int j = 0; j < n_neurons[i]; ++j){
                 network[i][j] = (double*)malloc((n_neurons[i-1]+1) * sizeof(double));
-                fill_rand(network[i][j], n_neurons[i-1]);
+                fill_rand(network[i][j], n_neurons[i-1]+1);
             }
         }
     }
 
-    network[0][0][0] = .15;
+    /*network[0][0][0] = .15;
     network[0][0][1] = .2;
     network[0][0][2] = .35;
 
@@ -255,10 +280,6 @@ MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
     network[0][1][1] = .3;
     network[0][1][2] = .35;
 
-
-    /*network[0][2][0] = .8;
-    network[0][2][1] = .3;*/
-
     network[1][0][0] = .4;
     network[1][0][1] = .45;
     network[1][0][2] = .6;
@@ -266,11 +287,7 @@ MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
 
     network[1][1][0] = .5;
     network[1][1][1] = .55;
-    network[1][1][2] = .6;
-    //network[1][1][2] = .8;
-
-    /*network[2][0][0] = .8;
-    network[2][0][1] = .5;*/
+    network[1][1][2] = .6;*/
 
     mlp->network = network;
     mlp->y_outs = y_outs;
@@ -292,6 +309,6 @@ void free_mlp(MLP mlp)
 void fill_rand(double vet[], int size)
 {
     for (int i = 0; i < size; ++i)
-        vet[i] = 0.01*((rand()/(double)(RAND_MAX))*2.0-1.0);
+        vet[i] = 0.001*((rand()/(double)(RAND_MAX))*2.0-1.0);
 }
 

@@ -29,7 +29,7 @@ void backward(MLP *mlp, double *input, double *output);
 int main(void)
 {
     srand(time(NULL));
-    int vet[] = {2, 1};
+    int vet[] = {2, 2};
     printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 2);
 
@@ -38,10 +38,10 @@ int main(void)
     double vetor3[] = {0, 1};
     double vetor4[] = {1, 1};
 
-    double out1[] = {0};
-    double out2[] = {1};
+    double out1[] = {0, 1};
+    double out2[] = {1, 0};
 
-    for (int j = 0; j < 100000; ++j)
+    for (int j = 0; j < 1000000; ++j)
     {
         forward(mlp, vetor1);
         backward(mlp, vetor1, out1);
@@ -51,7 +51,7 @@ int main(void)
         backward(mlp, vetor3, out2);
         forward(mlp, vetor4);
         backward(mlp, vetor4, out1);
-        if (j%100 == 0)
+        if (j%1000 == 0)
             printf("Error: %f\n", mlp->error);
     }
 

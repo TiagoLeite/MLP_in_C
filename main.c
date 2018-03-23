@@ -58,37 +58,6 @@ int main(void)
             printf("Error: %f\n", mlp->error);
     }
 
-    /*forward(mlp, vetor1);
-    double *final_outs = mlp->y_outs[mlp->n_layers-1];
-    double *zs = mlp->z_outs[mlp->n_layers-1];
-    for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-       printf("\n[zs: %f out: %f]", zs[i], final_outs[i]);
-    }
-    backward(mlp, vetor1, out1);*/
-
-    /*printf("\nError: %f", mlp->error);
-
-    printf("\nw: %f", mlp->network[1][0][0]);
-    printf("\nw: %f", mlp->network[1][0][1]);
-    printf("\nw: %f", mlp->network[1][1][0]);
-    printf("\nw: %f", mlp->network[1][1][1]);
-
-    printf("\n\nw: %f", mlp->network[0][0][0]);
-    printf("\nw: %f", mlp->network[0][0][1]);
-    printf("\nw: %f", mlp->network[0][1][0]);
-    printf("\nw: %f", mlp->network[0][1][1]);
-
-    for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-        printf("\n[zs: %f out: %f]", zs[i], final_outs[i]);
-    }*/
-
-    /*for (int i = 0; i < 10000; ++i) {
-        forward(mlp, vetor1);
-        backward(mlp, vetor1, out1);
-        if (!(i%100))
-            printf("\nError: %f", mlp->error);
-    }*/
-
     double *final_outs = mlp->y_outs[mlp->n_layers-1];
     double *zs = mlp->z_outs[mlp->n_layers-1];
 
@@ -134,23 +103,17 @@ void backward(MLP *mlp, double *input, double *output)
     double **first_layer = mlp->network[n_last_layer-1];
     for (int i = 0; i < mlp->n_neurons[n_last_layer]; ++i)//updating each weight of the layer
     {
-        //printf("\ne: %f o: %f", mlp->y_outs[n_last_layer][i], output[i]);
-        //printf("\n%f %f", mlp->y_outs[n_last_layer][i],  output[i]);
         error += (mlp->y_outs[n_last_layer][i] - output[i])*(mlp->y_outs[n_last_layer][i] - output[i]);
         mlp->deltas[n_last_layer][i] = (mlp->y_outs[n_last_layer][i] - output[i])*
                                       deriv_activ(mlp->z_outs[n_last_layer][i]);
         for (int j = 0; j < mlp->n_neurons[n_last_layer-1]; ++j)
         {
-            //printf("\nd: %f out: %f", mlp->deltas[n_last_layer][i]
-            //,(mlp->y_outs[n_last_layer-1][j]));
             last_layer[i][j] -=
                     mlp->LEARNING_RATE*mlp->deltas[n_last_layer][i]
                     *(mlp->y_outs[n_last_layer-1][j]);
-            //printf(" ->%f", last_layer[i][j]);
         }
         last_layer[i][mlp->n_neurons[n_last_layer-1]] -=
                 mlp->LEARNING_RATE*mlp->deltas[n_last_layer][i];
-                //*(mlp->y_outs[n_last_layer-1][mlp->n_neurons[n_last_layer-1]]);
     }
 
     error/=2.0;
@@ -162,15 +125,10 @@ void backward(MLP *mlp, double *input, double *output)
         sum = 0;
         for (int k = 0; k < mlp->n_neurons[n_last_layer]; ++k)
         {
-            //printf("\n%d %d", k, i);
             sum += mlp->deltas[n_last_layer][k]*last_layer[k][i];
-            //printf("\npart = %f %f", mlp->deltas[n_last_layer][k], last_layer[k][i]);
         }
         for (int j = 0; j < mlp->input_size; ++j)
         {
-            //printf("\nD = %f %f %f", sum
-            //            ,deriv_activ(mlp->z_outs[n_last_layer-1][i])
-            //            ,(input[j]));
             first_layer[i][j] -=
                     mlp->LEARNING_RATE*sum
                     *deriv_activ(mlp->z_outs[n_last_layer-1][i])
@@ -193,7 +151,6 @@ void forward(MLP *mlp, double *input)
         z = mult(input, w, 2);
         mlp->z_outs[0][i] = z;
         mlp->y_outs[0][i] = activ(z);
-        //printf("\n[(%d) z : %.4f, y: %.4f]", i, z, activ(z));
     }
     for (int k = 1; k < mlp->n_layers; ++k)
     {
@@ -203,7 +160,6 @@ void forward(MLP *mlp, double *input)
             z = mult(mlp->y_outs[k-1], w, mlp->n_neurons[k-1]);
             mlp->z_outs[k][i] = z;
             mlp->y_outs[k][i] = activ(z);
-            //printf("\n[(%d) z : %.4f, y: %.4f]", i, z, activ(z));
         }
     }
 }
@@ -212,10 +168,8 @@ double mult(const double *x, const double *w, int size)
 {
     double res = 0;
     for (int i = 0; i < size; ++i) {
-        //printf(" x : %f w : %f ", x[i], w[i]);
         res += x[i]*w[i];
     }
-    //printf("bias: %f\n", w[size]);
     return res + w[size]; // w[size] = bias
 }
 
@@ -269,7 +223,6 @@ void fill_rand(double vet[], int size)
 {
     for (int i = 0; i < size; ++i)
         vet[i] = 0.01*((rand()/(double)(RAND_MAX))*2.0-1.0);
-    //vet[size-1] = 0.005;
 }
 
 void free_mlp(MLP *mlp)

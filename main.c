@@ -26,13 +26,13 @@ void fill_rand(double vet[], int size);
 MLP *create_mlp(int n_layers, int n_neurons[], int input_size);
 double mult(const double *x, const double *w, int size);
 void forward(MLP *mlp, double *input);
-void backward(MLP *mlp, double *input, double *output);
+void backward(MLP *mlp, const double *input, const double *output);
 void free_mlp(MLP *mlp);
 
 int main(void)
 {
     srand(time(NULL));
-    int vet[] = {2, 1};
+    int vet[] = {2, 2};
     printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 2);
 
@@ -41,10 +41,10 @@ int main(void)
     double vetor3[] = {0, 1};
     double vetor4[] = {1, 1};
 
-    double out1[] = {0};
-    double out2[] = {1};
+    double out1[] = {1, 0};
+    double out2[] = {0, 1};
 
-    for (int j = 0; j < 30000; ++j)
+    for (int j = 0; j < 10000; ++j)
     {
         forward(mlp, vetor1);
         backward(mlp, vetor1, out1);
@@ -54,8 +54,11 @@ int main(void)
         backward(mlp, vetor3, out2);
         forward(mlp, vetor4);
         backward(mlp, vetor4, out1);
-        if (j%10000 == 0)
-            printf("Error: %f\n", mlp->error);
+        /*if (j%100 == 0)
+        {
+            printf("%.4f %.4f %.4f %.4f\n", mlp->deltas[0][0], mlp->deltas[0][1], mlp->deltas[1][0], mlp->deltas[1][1]);
+            //printf("Error: %f\n", mlp->error);
+        }*/
     }
 
     double *final_outs = mlp->y_outs[mlp->n_layers-1];
@@ -95,7 +98,7 @@ int main(void)
     return 0;
 }
 
-void backward(MLP *mlp, double *input, double *output)
+void backward(MLP *mlp, const double *input, const double *output)
 {
     double error = 0;
     int n_last_layer = mlp->n_layers-1;

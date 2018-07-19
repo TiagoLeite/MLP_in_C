@@ -31,8 +31,8 @@ void free_mlp(MLP *mlp);
 
 int main(void)
 {
-    srand(time(NULL));
-    int vet[] = {2, 2};
+    srand((unsigned int) time(NULL));
+    int vet[] = {16, 2};
     printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 2);
 
@@ -44,8 +44,11 @@ int main(void)
     double out1[] = {1, 0};
     double out2[] = {0, 1};
 
-    for (int j = 0; j < 10000; ++j)
+    int cont = 0;
+    while (mlp->error > 1e-4)
     {
+        if (cont++ % 100 ==0)
+            printf("Error: %.6f\n", mlp->error);
         forward(mlp, vetor1);
         backward(mlp, vetor1, out1);
         forward(mlp, vetor2);
@@ -60,37 +63,48 @@ int main(void)
             //printf("Error: %f\n", mlp->error);
         }*/
     }
+    printf("%d iterations", cont);
 
     double *final_outs = mlp->y_outs[mlp->n_layers-1];
     double *zs = mlp->z_outs[mlp->n_layers-1];
 
     printf("\n");
     forward(mlp, vetor1);
+
     //final_outs = mlp->y_outs[mlp->n_layers-1];
+
     for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-        printf("%f\n", final_outs[i]);
+        printf("%f ", final_outs[i]);
+        printf("z: %f\n", zs[i]);
     }
 
     printf("\n");
     forward(mlp, vetor2);
     //final_outs = mlp->y_outs[mlp->n_layers-1];
     for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-        printf("%f\n", final_outs[i]);
+        printf("%f ", final_outs[i]);
+        printf("z: %f\n", zs[i]);
+
     }
 
     printf("\n");
     forward(mlp, vetor3);
     //final_outs = mlp->y_outs[mlp->n_layers-1];
     for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-        printf("%f\n", final_outs[i]);
+        printf("%f ", final_outs[i]);
+        printf("z: %f\n", zs[i]);
+
     }
 
     printf("\n");
     forward(mlp, vetor4);
     //final_outs = mlp->y_outs[mlp->n_layers-1];
     for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-        printf("%f\n", final_outs[i]);
+        printf("%f ", final_outs[i]);
+        printf("z: %f\n", zs[i]);
+
     }
+
     backward(mlp, vetor4, out1);
 
     free_mlp(mlp);
@@ -180,6 +194,7 @@ MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
 
     MLP *mlp = (MLP*)malloc(sizeof(MLP));
     mlp->LEARNING_RATE = 0.05;
+    mlp->error = 1.0;
 
     double ***network = (double ***) malloc(n_layers * sizeof(double ***));
     double **z_outs = (double **) malloc(n_layers * sizeof(double *));

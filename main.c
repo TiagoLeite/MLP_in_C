@@ -28,6 +28,8 @@ double mult(const double *x, const double *w, int size);
 void forward(MLP *mlp, double *input);
 void backward(MLP *mlp, const double *input, const double *output);
 void free_mlp(MLP *mlp);
+unsigned char** read_data(int n, int width, int height);
+unsigned char* read_labels(int n);
 
 int main(void)
 {
@@ -36,6 +38,26 @@ int main(void)
     printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 2);
 
+    unsigned char *arr = read_labels(10);
+    unsigned char **images = read_data(10, 28, 28);
+    unsigned char num;
+    for (int j = 0; j < 10; j++)
+    {
+        printf("%d\n", arr[j]);
+        for (int i = 0; i < 28 * 28; i++)
+        {
+            num = images[j][i];
+            if (num > 0)
+                printf("1");
+            else
+                printf("0");
+            if (i % 28 == 27)
+                printf("\n");
+        }
+        printf("=============\n");
+    }
+
+    return 0;
     double vetor1[] = {0, 0};
     double vetor2[] = {1, 0};
     double vetor3[] = {0, 1};
@@ -265,5 +287,33 @@ void free_mlp(MLP *mlp)
     free(mlp->deltas);
     //free(mlp->n_neurons);
     free(mlp);
+}
 
+unsigned char** read_data(int n, int width, int height)
+{
+    unsigned char **vet;
+    vet = (unsigned char**)malloc(n*sizeof(unsigned char*));
+    vet[0] = (unsigned char*)malloc(n*height*width*sizeof(unsigned char));
+
+    for (int k = 1; k < n; ++k)
+        vet[k] = vet[0] + k * width * height;
+
+    FILE *f = fopen("train-images.idx3-ubyte", "rb");
+    unsigned char num;
+    fseek(f, 16, SEEK_CUR);
+    int read = (int)fread(*vet, sizeof(unsigned char), (unsigned int)(n * width * height), f);
+    printf("Read %d bytes\n", read);
+    fclose(f);
+    return vet;
+}
+
+unsigned char* read_labels(int n)
+{
+    unsigned char *vet;
+    vet = (unsigned char *) malloc(n * sizeof(unsigned char));
+    FILE *f = fopen("train-labels.idx1-ubyte", "rb");
+    fseek(f, 8, SEEK_CUR);
+    fread(vet, sizeof(unsigned char), (unsigned int) (n), f);
+    fclose(f);
+    return vet;
 }

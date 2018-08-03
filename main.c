@@ -31,7 +31,7 @@ void forward(MLP *mlp, const double *input);
 void backward(MLP *mlp, const double *input, const double *output);
 void free_mlp(MLP *mlp);
 double** read_data(int n, int width, int height);
-double* read_labels(int n);
+double** read_labels(int n);
 double* one_hot(double index, unsigned int size);
 
 int main(void)
@@ -41,8 +41,8 @@ int main(void)
     printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
     getchar();
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 28*28);
-    double *arr = read_labels(10000);
-    double **images = read_data(10000, 28, 28);
+    double **arr = read_labels(20000);
+    double **images = read_data(20000, 28, 28);
 
     //memcpy(&db, &cp, sizeof(unsigned char*));
 
@@ -74,14 +74,14 @@ int main(void)
     int cont = 0;
     while (cont < 10e3)
     {
-        for (int i = 0; i < 10000; ++i)
+        for (int i = 0; i < 20000; ++i)
         {
             /*if(mlp->error <= 1e-6)
                 break;*/
             if (i % 1000 == 0)
                 printf("Error: %.3f\n", mlp->error);
             forward(mlp, images[i]);
-            backward(mlp, images[i], one_hot(arr[i], 10));
+            backward(mlp, images[i], arr[i]);
         }
         cont++;
         /*if (j%100 == 0)
@@ -351,19 +351,24 @@ double** read_data(int n, int width, int height)
     return vet2;
 }
 
-double* read_labels(int n)
+double** read_labels(int n)
 {
     unsigned char *vet;
     vet = (unsigned char *) malloc(n * sizeof(unsigned char));
-    double *vet2;
-    vet2 = (double*) malloc(n * sizeof(double));
+
+    double **vet2;
+    vet2 = (double**) malloc(n * sizeof(double*));
+
     FILE *f = fopen("train-labels.idx1-ubyte", "rb");
     fseek(f, 8, SEEK_CUR);
     fread(vet, sizeof(unsigned char), (unsigned int) (n), f);
     fclose(f);
+
     for (int i = 0; i < n; ++i)
-        vet2[i] = vet[i];
+        vet2[i] = one_hot(vet[i], 10);
+
     free(vet);
+
     return vet2;
 }
 

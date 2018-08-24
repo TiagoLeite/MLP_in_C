@@ -7,8 +7,8 @@
 //#define deriv_activ(x) (activ(x)*(1-activ(x)))
 //#define activ(x) (tanh(x))
 //#define deriv_activ(x) (pow((2.0/(exp(x)+exp(-1.0*(x)))), 2))
-#define activ(x) ((x) > 0 ? (x) : (x)/10.0)
-#define deriv_activ(x) ((x) > 0 ? 1.0 : 0.1)
+#define activ(x) ((x) >= 0.0 ? (x) : 0.0)
+#define deriv_activ(x) ((x) >= 0.0 ? 1.0 : 0.0)
 
 struct mlp
 {
@@ -30,58 +30,36 @@ double mult(const double *x, const double *w, int size);
 void forward(MLP *mlp, const double *input);
 void backward(MLP *mlp, const double *input, const double *output);
 void free_mlp(MLP *mlp);
-double** read_data(int n, int width, int height);
-double** read_labels(int n);
+double** read_data(int n, int width, int height, char file_name[], int seek);
+double** read_labels(int n, char file_name[], int seek);
 double* one_hot(double index, unsigned int size);
+int argmax(const double* arr, int size);
+double** forward_batch(MLP *mlp, double **input, int input_size);
+double count_hits(double **arr1, double **arr2, int rows, int columns);
 
 int main(void)
 {
     srand((unsigned int) time(NULL));
-    int vet[] = {10, 10};
+    int vet[] = {30, 10};
     printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
-    getchar();
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 28*28);
-    double **arr = read_labels(20000);
-    double **images = read_data(20000, 28, 28);
 
-    //memcpy(&db, &cp, sizeof(unsigned char*));
+    double **train_labels = read_labels(50000, "train-labels.idx1-ubyte", 8);
+    double **train_images = read_data(50000, 28, 28, "train-images.idx3-ubyte", 16);
 
-
-    /*for (int j = 0; j < 20; j++)
-    {
-        printf("%d\n", arr[j]);
-        for (int i = 0; i < 28 * 28; i++)
-        {
-            num = images[j][i];
-            if (num > 0)
-                printf("1");
-            else
-                printf("0");
-            if (i % 28 == 27)
-                printf("\n");
-        }
-        printf("=============\n");
-    }*/
-
-    double vetor1[] = {0, 0};
-    double vetor2[] = {1, 0};
-    double vetor3[] = {0, 1};
-    double vetor4[] = {1, 1};
-
-    double out1[] = {1, 0};
-    double out2[] = {0, 1};
+    double **test_labels = read_labels(10000, "t10k-labels.idx1-ubyte", 8);
+    double **test_images = read_data(10000, 28, 28, "t10k-images.idx3-ubyte", 16);
 
     int cont = 0;
-    while (cont < 10e3)
+    while (cont < 15)
     {
-        for (int i = 0; i < 20000; ++i)
+        printf("Epoca %d\n", cont);
+        for (int i = 0; i < 50000; ++i)
         {
-            /*if(mlp->error <= 1e-6)
-                break;*/
-            if (i % 1000 == 0)
+            if (i % 5000 == 0)
                 printf("Error: %.3f\n", mlp->error);
-            forward(mlp, images[i]);
-            backward(mlp, images[i], arr[i]);
+            forward(mlp, train_images[i]);
+            backward(mlp, train_images[i], train_labels[i]);
         }
         cont++;
         /*if (j%100 == 0)
@@ -91,52 +69,12 @@ int main(void)
         }*/
     }
     printf("%d iterations", cont);
-
-    double *final_outs = mlp->y_outs[mlp->n_layers-1];
-    double *zs = mlp->z_outs[mlp->n_layers-1];
-
-    printf("\n");
-    forward(mlp, vetor1);
-
-    //final_outs = mlp->y_outs[mlp->n_layers-1];
-
-    /*for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-        printf("%f ", final_outs[i]);
-        printf("z: %f\n", zs[i]);
-    }*/
-
-    printf("\n");
-    forward(mlp, vetor2);
-    //final_outs = mlp->y_outs[mlp->n_layers-1];
-
-    /*for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-        printf("%f ", final_outs[i]);
-        printf("z: %f\n", zs[i]);
-
-    }*/
-
-    printf("\n");
-    forward(mlp, vetor3);
-    //final_outs = mlp->y_outs[mlp->n_layers-1];
-    /*for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-        printf("%f ", final_outs[i]);
-        printf("z: %f\n", zs[i]);
-
-    }*/
-
-    printf("\n");
-    forward(mlp, vetor4);
-    //final_outs = mlp->y_outs[mlp->n_layers-1];
-    for (int i = 0; i < mlp->n_neurons[mlp->n_layers-1]; ++i) {
-        printf("%f ", final_outs[i]);
-        printf("z: %f\n", zs[i]);
-
-    }
-
-    backward(mlp, vetor4, out1);
-
+    double **out = forward_batch(mlp, test_images, 10000);
+    double hits = count_hits(out, test_labels, 10000, 10);
+    printf("\nAccuracy: %f\n", hits);
+    //double *final_outs = mlp->y_outs[mlp->n_layers-1];
+    //double *zs = mlp->z_outs[mlp->n_layers-1];
     free_mlp(mlp);
-
     return 0;
 }
 
@@ -191,15 +129,6 @@ void forward(MLP *mlp, const double *input)
 {
     double z;
     double *w;
-    //getchar();
-    //unsigned char *p = (unsigned char*)input;
-    /*for (int j = 0; j < 784; ++j)
-    {
-        printf("%3.1f ", input[j]);
-        if(j % 28 == 27)
-            printf("\n");
-    }
-    getchar();*/
 
     for (int i = 0; i < mlp->n_neurons[0]; ++i)
     {
@@ -220,11 +149,43 @@ void forward(MLP *mlp, const double *input)
     }
 }
 
+double** forward_batch(MLP *mlp, double **input, int input_size)
+{
+    double z;
+    double *w;
+    double **outs = (double**)malloc(input_size*sizeof(double*));
+
+    for (int j = 0; j < input_size; ++j)
+    {
+        outs[j] = (double*)malloc(sizeof(double)*(mlp->n_neurons[mlp->n_layers-1]));
+        for (int i = 0; i < mlp->n_neurons[0]; ++i)
+        {
+            w = mlp->network[0][i];
+            z = mult(input[j], w, 28*28);
+            mlp->z_outs[0][i] = z;
+            mlp->y_outs[0][i] = activ(z);
+        }
+        for (int k = 1; k < mlp->n_layers; ++k)
+        {
+            for (int i = 0; i < mlp->n_neurons[k]; ++i)
+            {
+                w = mlp->network[k][i];
+                z = mult(mlp->y_outs[k-1], w, mlp->n_neurons[k-1]);
+                mlp->z_outs[k][i] = z;
+                mlp->y_outs[k][i] = activ(z);
+            }
+        }
+        memcpy(outs[j], mlp->y_outs[mlp->n_layers-1], sizeof(double)*(mlp->n_neurons[mlp->n_layers-1]));
+    }
+    return outs;
+}
+
+
 double mult(const double *x, const double *w, int size)
 {
     double res = 0.0;
     for (int i = 0; i < size; ++i) {
-        res += (x[i]/255.0)*w[i];
+        res += (x[i])*w[i];
     }
     return res + w[size]; // w[size] = bias
 }
@@ -279,7 +240,7 @@ MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
 void fill_rand(double vet[], int size)
 {
     for (int i = 0; i < size; ++i)
-        vet[i] = 0.05*((rand()/(double)(RAND_MAX))*2.0-1.0);
+        vet[i] = 0.01*((rand()/(double)(RAND_MAX))*2.0-1.0);
 }
 
 void free_mlp(MLP *mlp)
@@ -306,7 +267,7 @@ void free_mlp(MLP *mlp)
     free(mlp);
 }
 
-double** read_data(int n, int width, int height)
+double** read_data(int n, int width, int height, char file_name[], int seek)
 {
     unsigned char **vet;
     vet = (unsigned char**)malloc(n*sizeof(unsigned char*));
@@ -322,15 +283,18 @@ double** read_data(int n, int width, int height)
     for (int k = 1; k < n; ++k)
         vet2[k] = vet2[0] + k * width * height;
 
-    FILE *f = fopen("train-images.idx3-ubyte", "rb");
-    fseek(f, 16, SEEK_CUR);
+    FILE *f = fopen(file_name, "rb");
+
+    fseek(f, seek, SEEK_CUR);
+
     int read = (int)fread(*vet, sizeof(unsigned char), (unsigned int)(n * width * height), f);
+
     printf("Read %d bytes\n", read);
+
     fclose(f);
 
-    //memcpy(vet2[0], vet[0], sizeof(unsigned char*));
     /*for (int i = 0; i < 784; ++i) {
-        printf("%3d ", vet[0][i]);
+        printf("%3d ", vet[3][i]);
         if (i % 28 == 27)
             printf("\n");
     }
@@ -338,20 +302,14 @@ double** read_data(int n, int width, int height)
 
     for (int j = 0; j < n*height*width; ++j)
     {
-        vet2[0][j] = (double)vet[0][j];
+        vet2[0][j] = ((double)(vet[0][j]))/255.0;
+        //printf("%f\n", vet2[0][j]);
     }
-
-    /*for (int i = 0; i < 784; ++i) {
-        printf("%.2f ", vet2[0][i]);
-        if (i % 28 == 27)
-            printf("\n");
-    }
-    getchar();*/
 
     return vet2;
 }
 
-double** read_labels(int n)
+double** read_labels(int n, char file_name[], int seek)
 {
     unsigned char *vet;
     vet = (unsigned char *) malloc(n * sizeof(unsigned char));
@@ -359,9 +317,12 @@ double** read_labels(int n)
     double **vet2;
     vet2 = (double**) malloc(n * sizeof(double*));
 
-    FILE *f = fopen("train-labels.idx1-ubyte", "rb");
-    fseek(f, 8, SEEK_CUR);
+    FILE *f = fopen(file_name, "rb");
+    fseek(f, seek, SEEK_CUR);
     fread(vet, sizeof(unsigned char), (unsigned int) (n), f);
+
+    //printf("%d %d", vet[2], vet[3]);
+
     fclose(f);
 
     for (int i = 0; i < n; ++i)
@@ -379,5 +340,32 @@ double* one_hot(double index, unsigned int size)
     return arr;
 }
 
+int argmax(const double* arr, int size)
+{
+    if (size == 0)
+        return -1;
+    double max = arr[0];
+    int index = 0;
+    for (int i = 1; i < size; ++i)
+    {
+        if (arr[i] > max)
+        {
+            max = arr[i];
+            index = i;
+        }
+    }
+    return index;
+}
+
+double count_hits(double **arr1, double **arr2, int rows, int columns)
+{
+    int hits = 0;
+    for (int i = 0; i < rows; ++i)
+    {
+        if(argmax(arr1[i], columns) == argmax(arr2[i], columns))
+            hits++;
+    }
+    return ((double)hits)/(double)rows;
+}
 
 

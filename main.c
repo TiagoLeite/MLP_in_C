@@ -5,10 +5,10 @@
 #include <memory.h>
 //#define activ(x) (1.0/((1.0+exp(-1.0*(x)))))
 //#define deriv_activ(x) (activ(x)*(1-activ(x)))
-//#define activ(x) (tanh(x))
-//#define deriv_activ(x) (pow((2.0/(exp(x)+exp(-1.0*(x)))), 2))
-#define activ(x) ((x) > 0 ? (x) : 0.0)
-#define deriv_activ(x) ((x) > 0 ? 1.0 : 0.0)
+#define activ(x) (tanh(x))
+#define deriv_activ(x) (pow((2.0/(exp(x)+exp(-1.0*(x)))), 2))
+//#define activ(x) ((x) > 0 ? (x) : 0.0)
+//#define deriv_activ(x) ((x) > 0 ? 1.0 : 0.0)
 
 struct mlp
 {
@@ -38,11 +38,12 @@ double** forward_batch(MLP *mlp, double **input, int input_size);
 double count_hits(double **arr1, double **arr2, int rows, int columns);
 void set_error(MLP *mlp, double *output);
 
+
 int main(void)
 {
     srand((unsigned int) time(NULL));
-    int vet[] = {10, 10};
-    printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
+    int vet[] = {50, 25, 10};
+    printf("Layers: %ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 28*28);
 
     double **train_labels = read_labels(50000, "train-labels.idx1-ubyte", 8);
@@ -52,7 +53,7 @@ int main(void)
     double **test_images = read_data(10000, 28, 28, "t10k-images.idx3-ubyte", 16);
 
     int cont = 0;
-    while (cont < 10)
+    while (cont < 20)
     {
         printf("Epoca %d\n", cont);
         for (int i = 0; i < 50000; ++i)
@@ -60,8 +61,10 @@ int main(void)
             forward(mlp, train_images[i]);
             backward(mlp, train_images[i], train_labels[i]);
             set_error(mlp, train_labels[i]);
+
             if (i % 5000 == 0)
                 printf("Error: %.3f\n", mlp->error);
+
             //printf("%f %f %f %f\n", mlp->deltas[0][5], mlp->deltas[0][2],
             //       mlp->deltas[0][4], mlp->deltas[0][2]);
         }
@@ -76,47 +79,76 @@ int main(void)
     return 0;
 }
 
-void backward(MLP *mlp, const double *input, const double *output)
-{
-    int n_last_layer = mlp->n_layers-1;
+void backward(MLP *mlp, const double *input, const double *output) {
+
+    //TODO: fix one layer case
+
+    int n_last_layer = mlp->n_layers - 1;
     double **last_layer = mlp->network[n_last_layer]; //last layer
-    double **first_layer = mlp->network[n_last_layer-1];
-    for (int i = 0; i < mlp->n_neurons[n_last_layer]; ++i)//updating each weight of the layer
+
+    for (int i = 0; i < mlp->n_neurons[n_last_layer]; ++i)//updating each weight of the LAST layer
     {
-        mlp->deltas[n_last_layer][i] = (mlp->y_outs[n_last_layer][i] - output[i])*
-                                      deriv_activ(mlp->z_outs[n_last_layer][i]);
-        for (int j = 0; j < mlp->n_neurons[n_last_layer-1]; ++j)
-        {
+        mlp->deltas[n_last_layer][i] = (mlp->y_outs[n_last_layer][i] - output[i]) *
+                                       deriv_activ(mlp->z_outs[n_last_layer][i]);
+        for (int j = 0; j < mlp->n_neurons[n_last_layer - 1]; ++j) {
             last_layer[i][j] -=
-                    mlp->LEARNING_RATE*mlp->deltas[n_last_layer][i]
-                    *(mlp->y_outs[n_last_layer-1][j]);
+                    mlp->LEARNING_RATE * mlp->deltas[n_last_layer][i]
+                    * (mlp->y_outs[n_last_layer - 1][j]);
         }
-        last_layer[i][mlp->n_neurons[n_last_layer-1]] -=
-                mlp->LEARNING_RATE*mlp->deltas[n_last_layer][i];
+        last_layer[i][mlp->n_neurons[n_last_layer - 1]] -=
+                mlp->LEARNING_RATE * mlp->deltas[n_last_layer][i];
     }
 
     double sum;
-    for (int i = 0; i < mlp->n_neurons[n_last_layer-1]; ++i)//updating each weight of the layer
+
+    for (int layer = mlp->n_layers - 2; layer > 0; --layer)
+    {
+        for (int i = 0; i < mlp->n_neurons[layer]; ++i)//updating each weight of the MIDDLE layers
+        {
+            sum = 0;
+            for (int k = 0; k < mlp->n_neurons[layer+1]; ++k)
+            {
+                sum += mlp->deltas[layer+1][k]*mlp->network[layer+1][k][i];
+            }
+
+            mlp->deltas[layer][i] = sum*deriv_activ(mlp->z_outs[layer][i]);
+
+            for (int j = 0; j < mlp->n_neurons[layer-1]; ++j)
+            {
+                mlp->network[layer][i][j] -=
+                        mlp->LEARNING_RATE*mlp->deltas[layer][i]
+                        *(mlp->y_outs[layer-1][j]);
+                /*mlp->network[layer][i][j] -=
+                        mlp->LEARNING_RATE*mlp->deltas[layer][i]
+                        *(input[j]);*/
+            }
+            //bias:
+            mlp->network[layer][i][mlp->n_neurons[layer-1]] -=
+                    mlp->LEARNING_RATE*mlp->deltas[layer][i];
+        }
+    }
+
+    for (int i = 0; i < mlp->n_neurons[0]; ++i)//updating each weight of the FIRST layer
     {
         sum = 0;
-        for (int k = 0; k < mlp->n_neurons[n_last_layer]; ++k)
+        for (int k = 0; k < mlp->n_neurons[1]; ++k)
         {
-            sum += mlp->deltas[n_last_layer][k]*last_layer[k][i];
+            sum += mlp->deltas[1][k]*mlp->network[1][k][i];
         }
 
-        mlp->deltas[n_last_layer-1][i] = sum*deriv_activ(mlp->z_outs[n_last_layer-1][i]);
+        mlp->deltas[0][i] = sum*deriv_activ(mlp->z_outs[0][i]);
 
         for (int j = 0; j < mlp->input_size; ++j)
         {
-            first_layer[i][j] -=
-                    mlp->LEARNING_RATE*mlp->deltas[n_last_layer-1][i]
+            mlp->network[0][i][j] -=
+                    mlp->LEARNING_RATE*mlp->deltas[0][i]
                     *(input[j]);
         }
         //bias:
-        first_layer[i][mlp->input_size] -=
-                mlp->LEARNING_RATE*sum
-                *deriv_activ(mlp->z_outs[n_last_layer-1][i]);
+        mlp->network[0][i][mlp->input_size] -=
+                mlp->LEARNING_RATE*mlp->deltas[0][i];
     }
+
 }
 
 void forward(MLP *mlp, const double *input)
@@ -197,8 +229,8 @@ double mult(const double *x, const double *w, int size)
 MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
 
     MLP *mlp = (MLP*)malloc(sizeof(MLP));
-    mlp->LEARNING_RATE = 5*1e-4;
-    mlp->error = 1.0;
+    mlp->LEARNING_RATE = 1e-4;
+    mlp->error = 9999;
 
     double ***network = (double ***) malloc(n_layers * sizeof(double ***));
     double **z_outs = (double **) malloc(n_layers * sizeof(double *));
@@ -244,7 +276,7 @@ MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
 void fill_rand(double vet[], int size)
 {
     for (int i = 0; i < size; ++i)
-        vet[i] = 0.01*((rand()/(double)(RAND_MAX))*2.0-1.0);
+        vet[i] = 0.05*((rand()/(double)(RAND_MAX))*2.0-1.0);
 }
 
 void free_mlp(MLP *mlp)

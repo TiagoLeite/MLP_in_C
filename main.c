@@ -3,12 +3,14 @@
 #include <math.h>
 #include <time.h>
 #include <memory.h>
+
 //#define activ(x) (1.0/((1.0+exp(-1.0*(x)))))
 //#define deriv_activ(x) (activ(x)*(1-activ(x)))
+
 #define activ(x) (tanh(x))
 #define deriv_activ(x) (pow((2.0/(exp(x)+exp(-1.0*(x)))), 2))
-//#define activ(x) ((x) > 0 ? (x) : 0.0)
-//#define deriv_activ(x) ((x) > 0 ? 1.0 : 0.0)
+#define relu(x) ((x) > 0 ? (x) : 0.0)
+#define deriv_relu(x) ((x) > 0 ? 1.0 : 0.0)
 
 struct mlp
 {
@@ -42,7 +44,7 @@ void set_error(MLP *mlp, double *output);
 int main(void)
 {
     srand((unsigned int) time(NULL));
-    int vet[] = {50, 25, 10};
+    int vet[] = {32, 10};
     printf("Layers: %ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 28*28);
 
@@ -53,7 +55,7 @@ int main(void)
     double **test_images = read_data(10000, 28, 28, "t10k-images.idx3-ubyte", 16);
 
     int cont = 0;
-    while (cont < 20)
+    while (cont < 32)
     {
         printf("Epoca %d\n", cont);
         for (int i = 0; i < 50000; ++i)
@@ -74,7 +76,6 @@ int main(void)
     double **out = forward_batch(mlp, test_images, 10000);
     double hits = count_hits(out, test_labels, 10000, 10);
     printf("\nAccuracy: %f\n", hits);
-
     free_mlp(mlp);
     return 0;
 }
@@ -89,7 +90,7 @@ void backward(MLP *mlp, const double *input, const double *output) {
     for (int i = 0; i < mlp->n_neurons[n_last_layer]; ++i)//updating each weight of the LAST layer
     {
         mlp->deltas[n_last_layer][i] = (mlp->y_outs[n_last_layer][i] - output[i]) *
-                                       deriv_activ(mlp->z_outs[n_last_layer][i]);
+                                       deriv_relu(mlp->z_outs[n_last_layer][i]);
         for (int j = 0; j < mlp->n_neurons[n_last_layer - 1]; ++j) {
             last_layer[i][j] -=
                     mlp->LEARNING_RATE * mlp->deltas[n_last_layer][i]
@@ -111,7 +112,7 @@ void backward(MLP *mlp, const double *input, const double *output) {
                 sum += mlp->deltas[layer+1][k]*mlp->network[layer+1][k][i];
             }
 
-            mlp->deltas[layer][i] = sum*deriv_activ(mlp->z_outs[layer][i]);
+            mlp->deltas[layer][i] = sum*deriv_relu(mlp->z_outs[layer][i]);
 
             for (int j = 0; j < mlp->n_neurons[layer-1]; ++j)
             {
@@ -132,11 +133,9 @@ void backward(MLP *mlp, const double *input, const double *output) {
     {
         sum = 0;
         for (int k = 0; k < mlp->n_neurons[1]; ++k)
-        {
             sum += mlp->deltas[1][k]*mlp->network[1][k][i];
-        }
 
-        mlp->deltas[0][i] = sum*deriv_activ(mlp->z_outs[0][i]);
+        mlp->deltas[0][i] = sum*deriv_relu(mlp->z_outs[0][i]);
 
         for (int j = 0; j < mlp->input_size; ++j)
         {
@@ -160,7 +159,7 @@ void forward(MLP *mlp, const double *input)
         w = mlp->network[0][i];
         z = mult(input, w, 28*28);
         mlp->z_outs[0][i] = z;
-        mlp->y_outs[0][i] = activ(z);
+        mlp->y_outs[0][i] = relu(z);
     }
     for (int k = 1; k < mlp->n_layers; ++k)
     {
@@ -169,7 +168,7 @@ void forward(MLP *mlp, const double *input)
             w = mlp->network[k][i];
             z = mult(mlp->y_outs[k-1], w, mlp->n_neurons[k-1]);
             mlp->z_outs[k][i] = z;
-            mlp->y_outs[k][i] = activ(z);
+            mlp->y_outs[k][i] = relu(z);
         }
     }
 }
@@ -199,7 +198,7 @@ double** forward_batch(MLP *mlp, double **input, int input_size)
             w = mlp->network[0][i];
             z = mult(input[j], w, 28*28);
             mlp->z_outs[0][i] = z;
-            mlp->y_outs[0][i] = activ(z);
+            mlp->y_outs[0][i] = relu(z);
         }
         for (int k = 1; k < mlp->n_layers; ++k)
         {
@@ -208,7 +207,7 @@ double** forward_batch(MLP *mlp, double **input, int input_size)
                 w = mlp->network[k][i];
                 z = mult(mlp->y_outs[k-1], w, mlp->n_neurons[k-1]);
                 mlp->z_outs[k][i] = z;
-                mlp->y_outs[k][i] = activ(z);
+                mlp->y_outs[k][i] = relu(z);
             }
         }
         memcpy(outs[j], mlp->y_outs[mlp->n_layers-1], sizeof(double)*(mlp->n_neurons[mlp->n_layers-1]));

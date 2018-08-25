@@ -41,7 +41,7 @@ void set_error(MLP *mlp, double *output);
 int main(void)
 {
     srand((unsigned int) time(NULL));
-    int vet[] = {128, 10};
+    int vet[] = {10, 10};
     printf("%ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 28*28);
 
@@ -52,7 +52,7 @@ int main(void)
     double **test_images = read_data(10000, 28, 28, "t10k-images.idx3-ubyte", 16);
 
     int cont = 0;
-    while (cont < 50)
+    while (cont < 10)
     {
         printf("Epoca %d\n", cont);
         for (int i = 0; i < 50000; ++i)
@@ -62,20 +62,16 @@ int main(void)
             set_error(mlp, train_labels[i]);
             if (i % 5000 == 0)
                 printf("Error: %.3f\n", mlp->error);
+            //printf("%f %f %f %f\n", mlp->deltas[0][5], mlp->deltas[0][2],
+            //       mlp->deltas[0][4], mlp->deltas[0][2]);
         }
         cont++;
-        /*if (j%100 == 0)
-        {
-            printf("%.4f %.4f %.4f %.4f\n", mlp->deltas[0][0], mlp->deltas[0][1], mlp->deltas[1][0], mlp->deltas[1][1]);
-            //printf("Error: %f\n", mlp->error);
-        }*/
     }
     printf("%d iterations", cont);
     double **out = forward_batch(mlp, test_images, 10000);
     double hits = count_hits(out, test_labels, 10000, 10);
     printf("\nAccuracy: %f\n", hits);
-    //double *final_outs = mlp->y_outs[mlp->n_layers-1];
-    //double *zs = mlp->z_outs[mlp->n_layers-1];
+
     free_mlp(mlp);
     return 0;
 }
@@ -108,11 +104,12 @@ void backward(MLP *mlp, const double *input, const double *output)
             sum += mlp->deltas[n_last_layer][k]*last_layer[k][i];
         }
 
+        mlp->deltas[n_last_layer-1][i] = sum*deriv_activ(mlp->z_outs[n_last_layer-1][i]);
+
         for (int j = 0; j < mlp->input_size; ++j)
         {
             first_layer[i][j] -=
-                    mlp->LEARNING_RATE*sum
-                    *deriv_activ(mlp->z_outs[n_last_layer-1][i])
+                    mlp->LEARNING_RATE*mlp->deltas[n_last_layer-1][i]
                     *(input[j]);
         }
         //bias:

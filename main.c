@@ -9,8 +9,8 @@
 
 #define activ(x) (tanh(x))
 #define deriv_activ(x) (pow((2.0/(exp(x)+exp(-1.0*(x)))), 2))
-#define relu(x) ((x) > 0 ? (x) : 0.0)
-#define deriv_relu(x) ((x) > 0 ? 1.0 : 0.0)
+#define relu(x) ((x) > 0 ? (x) : (x)/10.0)
+#define deriv_relu(x) ((x) > 0 ? 1.0 : 0.1)
 
 struct mlp
 {
@@ -44,7 +44,7 @@ void set_error(MLP *mlp, double *output);
 int main(void)
 {
     srand((unsigned int) time(NULL));
-    int vet[] = {32, 10};
+    int vet[] = {200, 100, 10};
     printf("Layers: %ld\n", sizeof(vet)/sizeof(vet[0]));
     MLP *mlp = create_mlp(sizeof(vet)/sizeof(vet[0]), vet, 28*28);
 
@@ -55,7 +55,7 @@ int main(void)
     double **test_images = read_data(10000, 28, 28, "t10k-images.idx3-ubyte", 16);
 
     int cont = 0;
-    while (cont < 32)
+    while (cont < 50)
     {
         printf("Epoca %d\n", cont);
         for (int i = 0; i < 50000; ++i)
@@ -179,7 +179,7 @@ void set_error(MLP *mlp, double *output)
     int n_last_layer = mlp->n_layers-1;
     for (int i = 0; i < mlp->n_neurons[n_last_layer]; ++i)
     {
-        error += (mlp->y_outs[n_last_layer][i] - output[i])*(mlp->y_outs[n_last_layer][i] - output[i]);
+        error += pow(mlp->y_outs[n_last_layer][i] - output[i], 2);
     }
     mlp->error = error/2.0;
 }
@@ -228,7 +228,7 @@ double mult(const double *x, const double *w, int size)
 MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
 
     MLP *mlp = (MLP*)malloc(sizeof(MLP));
-    mlp->LEARNING_RATE = 1e-4;
+    mlp->LEARNING_RATE = 5*1e-4;
     mlp->error = 9999;
 
     double ***network = (double ***) malloc(n_layers * sizeof(double ***));
@@ -275,7 +275,7 @@ MLP *create_mlp(int n_layers, int n_neurons[], int input_size) {
 void fill_rand(double vet[], int size)
 {
     for (int i = 0; i < size; ++i)
-        vet[i] = 0.05*((rand()/(double)(RAND_MAX))*2.0-1.0);
+        vet[i] = 0.01*((rand()/(double)(RAND_MAX))*2.0-1.0);
 }
 
 void free_mlp(MLP *mlp)
